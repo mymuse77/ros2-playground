@@ -30,6 +30,7 @@ setup(
         'console_scripts': [
             'greeter = pg_basics_py.greeter_node:main',
             'listener = pg_basics_py.listener_node:main',
+            'reset_client = pg_basics_py.reset_client_node:main',
         ],
     },
 )
