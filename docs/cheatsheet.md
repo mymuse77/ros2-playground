@@ -54,6 +54,23 @@ ros2 launch pg_sim tb3_sim.launch.py world:=house gui:=false
 ros2 launch pg_obstacle_avoidance_py avoid_sim.launch.py   # 02 课：避障漫游
 ros2 launch pg_go_to_goal_py navigate_sim.launch.py        # 03 课：Bug2 导航（mode:=p 切换为 P 控制）
 ros2 launch pg_slam_py slam_sim.launch.py                  # 04 课：SLAM 建图（explore:=auto 自动漫游）
+ros2 launch pg_nav2_py nav2_sim.launch.py                  # 05 课：Nav2 导航（patrol:=true 同时巡逻）
+ros2 launch pg_nav2_py nav2_sim.launch.py acceptance:=true loops:=3   # 05 课：巡逻验收，跑完自动退出
+```
+
+## Nav2（05 课）
+
+```bash
+ros2 lifecycle get /amcl                                   # Nav2 的节点都是生命周期节点，正常是 active [3]
+ros2 run pg_nav2_py patrol --ros-args -p use_sim_time:=true -p loops:=1     # 单独启动巡逻
+ros2 run pg_nav2_py compare_planners --ros-args -p use_sim_time:=true      # 规划器对比表格
+ros2 topic pub --once --qos-durability transient_local /controller_selector \
+  std_msgs/msg/String "{data: RPP}"                        # 切换控制器（FollowPath / RPP / MPPI）
+ros2 topic pub --once --qos-durability transient_local /planner_selector \
+  std_msgs/msg/String "{data: ThetaStar}"                  # 切换规划器（GridBased / Smac2D / ThetaStar）
+ros2 action send_goal --feedback /navigate_to_pose nav2_msgs/action/NavigateToPose \
+  "{pose: {header: {frame_id: map}, pose: {position: {x: 1.45, y: -0.05}, orientation: {w: 1.0}}}}"
+ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0.35   # 运行时调代价地图
 ```
 
 ## 地图与生命周期节点

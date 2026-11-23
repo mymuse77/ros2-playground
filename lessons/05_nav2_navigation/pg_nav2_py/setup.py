@@ -1,4 +1,4 @@
-"""pg_nav2_py 包的安装配置：注册巡逻节点，安装 launch、参数和 RViz 文件。"""
+"""pg_nav2_py 包的安装配置：注册巡逻节点和规划器对比工具，安装 launch、参数和 RViz 文件。"""
 
 from glob import glob
 import os
@@ -30,6 +30,7 @@ setup(
     entry_points={
         'console_scripts': [
             'patrol = pg_nav2_py.patrol_node:main',
+            'compare_planners = pg_nav2_py.compare_planners_node:main',
         ],
     },
 )

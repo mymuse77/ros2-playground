@@ -116,6 +116,12 @@ def main(args=None):
         pass
     except (KeyboardInterrupt, ExternalShutdownException):
         node._log_report(final=True)
+    except Exception:
+        # 被 launch 关闭时，ROS 上下文可能恰好在执行器取消息的过程中失效，抛出 RCLError
+        # 之类的异常（不是上面两种）。上下文已经关闭就当作正常结束；否则是真的出错了，继续抛出
+        if rclpy.ok():
+            raise
+        node._log_report(final=True)
     finally:
         # 在终端里对 ros2 launch 按 Ctrl+C 时，节点会收到两次 SIGINT：终端发给整个进程组一次，
         # launch 再转发一次。第二次如果落在下面的清理过程中，会打断 destroy_node()、

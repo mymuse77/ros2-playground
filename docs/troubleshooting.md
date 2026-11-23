@@ -68,6 +68,11 @@ Jazzy 版 TurtleBot3 的 `/cmd_vel` 类型是 `geometry_msgs/msg/TwistStamped`�
 永远发现不了"数据超时"。看门狗这类安全相关的计时要用稳定时钟：
 `create_timer(..., clock=Clock(clock_type=ClockType.STEADY_TIME))`。
 
+**对 `ros2 launch` 按 Ctrl+C 后，节点退出时打出一大段 `KeyboardInterrupt`**（05 课）
+节点收到了两次 SIGINT：终端把 Ctrl+C 发给整个进程组一次，launch 再转发一次。第一次让节点进入清理，
+第二次打断了 `destroy_node()`。清理开始时忽略 SIGINT：`signal.signal(signal.SIGINT, signal.SIG_IGN)`，
+见 `safety_monitor_node.py` 和 `patrol_node.py` 的 `main()`。
+
 **动作服务端退出时卡住**（03 课）
 多线程执行器关闭时会等待正在运行的执行回调结束。如果执行回调是一个控制循环，它必须能感知到"节点要关了"。
 03 课的做法：退出前设置一个 `threading.Event`，循环每个周期检查它。
@@ -106,6 +111,46 @@ slam_toolbox 每 `map_update_interval` 秒重新生成一次地图，车还在�
 
 **保存工具收不到地图**
 订阅 `/map` 要用 Transient Local（与发布者一致），否则只能收到连上之后的新地图；slam_toolbox 没激活时也没有地图，用 `ros2 lifecycle get /slam_toolbox` 确认是 `active`。
+
+## Nav2（05 课）
+
+**map_server 配置失败：`Failed to load map yaml file: map.yaml`，定位整组都没激活**
+参数文件里写了 `map_server.ros__parameters.yaml_filename`。按具体节点名设置的参数优先级高于 launch 通过
+`map:=` 传入的路径，所以总是去加载那个（不存在的）文件。从参数文件里删掉这一项，地图只用 launch 参数指定。
+排查：`ros2 lifecycle get /map_server` 是 `unconfigured`，日志里找 `map_server` 的第一条 ERROR。
+
+**`bad file: .../install/pg_sim/share/pg_sim/maps/tb3_world.yaml`**
+地图是后来放进 `pg_sim/maps` 的，安装目录里还没有。`colcon build --packages-select pg_sim` 重新编译一次。
+
+**`ros2 launch ... controller:=` 报 `malformed launch argument`**
+命令行上不能传空值。想用默认值就不传这个参数。launch 文件内部要把可能为空的参数传给节点时，
+用 `ParameterValue(LaunchConfiguration('x'), value_type=str)` 指明类型，否则空字符串会被当成"没有值"。
+
+**`ros2 topic pub /controller_selector ...` 发了没效果**
+行为树里的选择器用 Transient Local 订阅。发布时也要 `--qos-durability transient_local`，
+否则两边 QoS 不兼容，消息根本收不到（不会报错）。
+
+**车停着时 `/amcl_pose` 不更新**
+AMCL 只在车移动超过 `update_min_d`（0.25 m）或转动超过 `update_min_a`（0.2 rad）后才更新。这是正常现象，不是定位挂了。
+
+**单独启动巡逻节点后，小车的定位"跳回"了地图原点**
+`BasicNavigator.waitUntilNav2Active()` 在收到 `/amcl_pose` 之前会反复发布初始位姿（默认是原点）。
+本课的巡逻节点改为只订阅、不发布，见 `patrol_node.py` 的 `wait_for_nav2()`。
+
+**新节点看不到已有的服务，或日志出现 `open_and_lock_file failed`、`A message was lost`**
+之前用 `kill -9` 强制结束的进程在 `/dev/shm` 留下了 FastDDS 共享内存文件，新进程的端点发现会出问题
+（本课开发时巡逻节点一直打印 `amcl/get_state service not available`，命令行却能看到这个服务）。
+关掉所有 ROS 进程后清理：
+```bash
+ros2 daemon stop
+rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_*
+```
+
+**`CRITICAL FAILURE: SERVER map_server IS DOWN after not receiving a heartbeat`，之后所有目标都失败**
+`lifecycle_manager` 和每个节点之间有心跳（bond），按墙钟计时，4 s 收不到就认为节点挂了，把整组都关掉。
+WSL2 上仿真把 CPU 占满、或者系统时钟跳变时，心跳会被误判为超时（本课开发时 3 次长时间巡逻里有 2 次中途出现）。
+本课的 launch 用 `SetParameter('bond_timeout', 0.0)` 关掉了心跳，见 `nav2_sim.launch.py` 的注释。
+注意 `lifecycle_manager` 不读 Nav2 参数文件，写在 `nav2.yaml` 里没有用。实车上应保留心跳。
 
 ## 代码风格检查（flake8）
 
