@@ -11,6 +11,7 @@
   <exec_depend>rclpy</exec_depend>
   <exec_depend>pg_interfaces</exec_depend>
   <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
 
   <!-- 测试依赖：代码风格检查、文档字符串检查、单元测试框架 -->
   <test_depend>ament_flake8</test_depend>
