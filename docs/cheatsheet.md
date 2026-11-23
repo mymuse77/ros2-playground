@@ -17,7 +17,7 @@ rm -rf build install log                              # 清理编译产物
 
 ```bash
 ros2 node list                         # 列出节点
-ros2 node info /obstacle_avoider       # 节点的订阅、发布、服务、参数
+ros2 node info /avoider                # 节点的订阅、发布、服务、参数
 ros2 topic list -t                     # 列出话题及类型
 ros2 topic echo /scan --once           # 打印一条消息
 ros2 topic hz /scan                    # 测量发布频率
@@ -37,8 +37,12 @@ ros2 param list /greeter
 ros2 param get /greeter publish_rate_hz
 ros2 param set /greeter publish_rate_hz 5.0
 ros2 param dump /greeter > params.yaml
+ros2 param describe /avoider stop_distance     # 参数说明、类型、取值范围、是否只读
 ros2 action list -t
+ros2 action info /navigate_to_point            # 动作的服务端和客户端
 ros2 action send_goal --feedback /countdown pg_interfaces/action/Countdown "{seconds: 5}"
+ros2 action send_goal --feedback /navigate_to_point pg_interfaces/action/NavigateToPoint \
+  "{x: 3.0, y: 0.0}"                           # 03 课：导航到 odom 坐标系的 (3, 0)
 ```
 
 ## launch
@@ -47,6 +51,8 @@ ros2 action send_goal --feedback /countdown pg_interfaces/action/Countdown "{sec
 ros2 launch pg_basics_py basics.launch.py
 ros2 launch pg_basics_py basics.launch.py --show-args     # 查看可传入的参数
 ros2 launch pg_sim tb3_sim.launch.py world:=house gui:=false
+ros2 launch pg_obstacle_avoidance_py avoid_sim.launch.py   # 02 课：避障漫游
+ros2 launch pg_go_to_goal_py navigate_sim.launch.py        # 03 课：Bug2 导航（mode:=p 切换为 P 控制）
 ```
 
 ## bag 录制与回放
@@ -55,6 +61,7 @@ ros2 launch pg_sim tb3_sim.launch.py world:=house gui:=false
 ros2 bag record -o ~/bags/demo /scan /odom      # 录制指定话题
 ros2 bag info ~/bags/demo                       # 查看录包信息
 ros2 bag play ~/bags/demo --rate 2.0            # 两倍速回放
+ros2 bag play ~/bags/demo --delay 2.0           # 等 2 秒再开始，避免订阅者还没连上就丢掉开头的消息
 ```
 
 ## 坐标变换（TF）
@@ -74,4 +81,7 @@ rviz2                                                      # 三维可视化
 rqt                                                        # 图形化调试工具集
 glxinfo -B | grep renderer                                 # 确认使用显卡渲染（应显示 D3D12）
 pkill -f "gz sim"                                          # 仿真没退干净时强制结束
+ros2 topic echo --once --field clock.sec /clock            # 当前仿真时间（秒）
+ros2 run pg_obstacle_avoidance_py safety_monitor \
+  --ros-args -p use_sim_time:=true -p duration:=300.0      # 02 课：独立统计净空和接触次数
 ```

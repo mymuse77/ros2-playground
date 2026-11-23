@@ -41,3 +41,66 @@ Jazzy 版 TurtleBot3 的 `/cmd_vel` 类型是 `geometry_msgs/msg/TwistStamped`�
 
 **Gazebo 关闭后还有残留进程，再次启动报错**
 执行 `pkill -f "gz sim"` 清理后再启动。
+
+**WSL2 下仿真比现实慢，`ros2 topic hz /scan` 只有 3 Hz 左右**
+没有独立显卡时 Gazebo 的传感器渲染很吃 CPU，仿真常常只有 0.3 倍速左右（`/clock` 走 1 秒，现实过了 3 秒）。
+节点都用仿真时间，行为不受影响；`topic hz` 按现实时间统计，所以显示偏低。无窗口模式（`gui:=false`）能快一些。
+
+## 节点编写
+
+**按 Ctrl+C 后小车没有停，还在按最后的速度跑**（02 课）
+两个原因叠加：
+1. rclpy 默认的信号处理会**先关闭 ROS**，之后再 `publish()` 已经发不出去。
+   解决：`rclpy.init(signal_handler_options=SignalHandlerOptions.NO)`，自己处理 Ctrl+C，退出前先发零速度
+2. `rclpy.spin()` 阻塞在 C 代码里，没有消息到达时 Python 的信号处理函数没机会运行，Ctrl+C 要等很久才生效。
+   解决：改用 `while rclpy.ok(): rclpy.spin_once(node, timeout_sec=0.1)` 循环
+
+完整写法见 `lessons/02_obstacle_avoidance/.../avoider_node.py` 的 `main()`，03 课把它整理成了
+`pg_go_to_goal_py/ros_utils.py` 里的 `init_with_safe_shutdown` 和 `spin_until_shutdown`。
+
+**脚本里用 `&` 放到后台的节点，`kill -INT` 杀不掉**
+非交互式 shell 启动的后台进程会继承"忽略 SIGINT"的设置。节点里显式安装处理函数即可：
+`signal.signal(signal.SIGINT, signal.default_int_handler)`；或者用 `kill -TERM`。
+不要在脚本里用 `set -m` 来绕过：WSL 的非交互式 shell 中它会让后台进程被挂起。
+
+**看门狗在仿真卡住时不起作用**（02 课）
+定时器默认使用节点时钟，`use_sim_time:=true` 时就是仿真时钟。仿真卡住时仿真时钟也停了，定时器不再触发，
+永远发现不了"数据超时"。看门狗这类安全相关的计时要用稳定时钟：
+`create_timer(..., clock=Clock(clock_type=ClockType.STEADY_TIME))`。
+
+**动作服务端退出时卡住**（03 课）
+多线程执行器关闭时会等待正在运行的执行回调结束。如果执行回调是一个控制循环，它必须能感知到"节点要关了"。
+03 课的做法：退出前设置一个 `threading.Event`，循环每个周期检查它。
+
+**动作客户端一直等不到结果，服务端日志有 `failed to send response (timeout)`**（03 课）
+服务的回应在 DDS 发现还没完成时可能送不到，CPU 很忙（比如跑着仿真）时更容易出现。
+发送目标、请求结果都是服务调用，都可能遇到。客户端要给等待设超时并重试，见 `navigate_client_node.py`。
+
+**`ros2 bag play` 回放时开头几条消息丢了**（01 课）
+回放一开始就发布，订阅者可能还没完成发现（discovery）。加 `--delay 2.0` 等 2 秒再开始。
+
+**测试一个节点"雷达断线"时，直接杀掉 `parameter_bridge` 不合适**（02 课）
+桥接节点同时转发 `/clock` 和 `/cmd_vel`，杀掉后仿真时钟和速度指令也断了，测试结果没有意义。
+更干净的做法：写一个转发节点把 `/scan` 转到 `/scan_gated`，被测节点用 `-r scan:=/scan_gated` 订阅它，需要断线时停掉转发节点。
+
+## 算法
+
+**沿墙走时绕过外拐角后原地打小圈**（03 课）
+只看"正右方扇区的最近距离"时，墙角转到右后方后就不在扇区里了，算法以为墙丢了，一直最大角速度右转。
+解决：在整个右半边找最近点，同时控制距离和方向（让最近点保持在正右方），见 `bug2.py` 的 `wall_follow_command`。
+教训：单元测试里的墙太短没暴露这个问题，后来补了一个和仿真场景一模一样的闭环测试。
+
+**目标在障碍物里面，却报告"已到达"**（03 课）
+判断"被挡住"时只比较了"前方距离 < 目标距离"。目标在方块中心时，里程计误差加上雷达装在车中心后方，
+这个条件不成立，车顶着方块打滑，里程计继续累加，最后"到达"了一个车根本去不了的位置。
+解决：车中心到达目标时车头伸到"目标距离 + 车体半径"处，改为 `前方距离 < 目标距离 + robot_radius`。
+排查方法：对比 `/odom` 和 Gazebo 的真实位姿 `gz model -m waffle -p`，两者差得多就说明打滑或撞上了。
+
+## 代码风格检查（flake8）
+
+| 报错 | 原因 | 解决 |
+|---|---|---|
+| A003 `next` / `set` is a python builtin | 方法名或变量名与内置函数重名 | 换个名字，如 `take()`、`with_reading()` |
+| I100 import 顺序不对 | Google 风格按模块名字母排序，`from rcl_interfaces...` 要在 `import rclpy` 前面 | 按模块名排序，不看 `import` / `from` |
+| D301 / W605 反斜杠 | 文档字符串里画图用了 `\` | 用制表符 `╲ ╱`，或改用原始字符串 |
+| D400 / D415 摘要要以句点结尾 | 规则针对英文 | 本仓库在 `setup.cfg` 中忽略这两条 |

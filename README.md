@@ -84,7 +84,7 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 - [x] 03 Bug2 避障导航算法 + 单元测试
 - [x] 03 导航动作服务端与客户端（可取消、有进度反馈）
 - [x] 03 仿真验收：绕过障碍到达目标点
-- [ ] 03 课 README
+- [x] 03 课 README
 - [ ] 04 SLAM 建图 launch（键盘遥控 / 自动漫游两种方式）
 - [ ] 04 地图保存工具
 - [ ] 04 生成 turtlebot3_world 地图并放入 `pg_sim`
