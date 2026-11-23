@@ -1,0 +1,80 @@
+# 04 课 slam_toolbox 参数（slam_sim.launch.py 默认加载）。
+#
+# 以 slam_toolbox 自带的 config/mapper_params_online_async.yaml（2.8.x）为基础，
+# 标【改】的是为 TurtleBot3 和本课场景改过的值，其余与官方默认一致。
+# 官方 launch 只接受一个参数文件，所以这里是完整的一份，不是只写改动的部分。
+# 节点名必须是 slam_toolbox（与官方 online_async_launch.py 一致）。
+
+slam_toolbox:
+  ros__parameters:
+    # ---- 优化器（位姿图后端）：一般不用改 ----
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # ---- 坐标系与话题 ----
+    # slam_toolbox 发布 map → odom 的变换；odom → base_footprint 由仿真的里程计发布
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_footprint
+    scan_topic: /scan
+    use_map_saver: true          # 提供 /slam_toolbox/save_map 服务
+    mode: mapping                # mapping 建图；localization 在已有地图上定位
+    debug_logging: false
+
+    # ---- 节奏 ----
+    throttle_scans: 1                    # 每几帧雷达处理一帧
+    transform_publish_period: 0.02       # s，map → odom 的发布周期；0 表示不发布
+    map_update_interval: 2.0             # 【改】s，多久重新生成一次 /map（官方 5.0，改小后 RViz 里更新更及时）
+    resolution: 0.05                     # m/格，地图分辨率
+    restamp_tf: false
+    min_laser_range: 0.0                 # m，画进地图的雷达最小距离
+    max_laser_range: 3.5                 # 【改】m，画进地图的最大距离：TurtleBot3 雷达量程 3.5 m（官方 20.0）
+    minimum_time_interval: 0.5           # s，两次处理雷达的最短间隔
+    transform_timeout: 0.2
+    tf_buffer_duration: 30.0
+    stack_size_to_use: 40000000          # 序列化大地图需要更大的栈
+    enable_interactive_mode: true
+
+    # ---- 扫描匹配（前端）：用新的一帧雷达去对齐已有的地图，修正里程计误差 ----
+    use_scan_matching: true
+    use_scan_barycenter: true
+    # 车移动或转动超过下面的量才加入一个新的关键帧（位姿图的节点）
+    minimum_travel_distance: 0.3         # 【改】m（官方 0.5）：场景小，关键帧密一些
+    minimum_travel_heading: 0.3          # 【改】rad（官方 0.5）
+    check_min_dist_and_heading_precisely: false
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 10.0
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
+
+    # ---- 回环检测：回到走过的地方时，把当前帧和很久以前的帧对齐，消除累积误差 ----
+    loop_search_maximum_distance: 3.0
+    do_loop_closing: true
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    # ---- 相关性搜索参数：一般不用改 ----
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+    distance_variance_penalty: 0.5
+    angle_variance_penalty: 1.0
+    fine_search_angle_offset: 0.00349
+    coarse_search_angle_offset: 0.349
+    coarse_angle_resolution: 0.0349
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true
+
+    # ---- 栅格化 ----
+    min_pass_through: 2           # 一个格子至少被雷达穿过几次才判为空闲
+    occupancy_threshold: 0.1      # 被击中次数 / 穿过次数超过此比例判为障碍
