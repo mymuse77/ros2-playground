@@ -2,7 +2,7 @@
 
 一个循序渐进的 ROS 2 学习仓库：从最基础的话题通信开始，一步步做到激光雷达避障、到点导航、SLAM 建图和 Nav2 自主导航，全部在 Gazebo 仿真里完成。
 
-每一课都是一个独立文件夹，有自己的 README（学习目标、实验步骤、代码导读、课后练习），可以单独编译和运行。提交记录按"一个关键步骤一次提交"组织，可以配合 `git log` 逐步回看每一步做了什么。
+每一课都是一个独立文件夹，有自己的 README（学习目标、实验步骤、代码导读、课后练习），可以单独编译和运行（`colcon build --packages-up-to <包名>` 会连同它依赖的公共包一起编译）。提交记录按"一个关键步骤一次提交"组织，可以配合 `git log` 逐步回看每一步做了什么。
 
 ## 环境
 
@@ -18,7 +18,7 @@
 ## 快速开始
 
 ```bash
-# 1. 仓库放在工作空间的 src 目录下（整个仓库就是工作空间的源码目录）
+# 1. 把仓库克隆到工作空间的 src 目录下（colcon 会在 src 里递归查找所有功能包）
 mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
 git clone https://github.com/mymuse77/ros2_playground.git
 
@@ -44,8 +44,8 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 |---|---|---|---|
 | 一、基础 | [01](lessons/01_ros2_basics/) | ROS 2 核心概念：话题、服务、参数、动作、launch、bag | Python |
 | 二、移动机器人自主 | [02](lessons/02_obstacle_avoidance/) | 激光雷达避障漫游 | Python |
-| | [03](lessons/03_go_to_goal/) | 里程计、坐标变换与到点控制（Bug2 算法） | Python |
-| | [04](lessons/04_slam_mapping/) | SLAM 建图 | Python + 配置 |
+| | [03](lessons/03_go_to_goal/) | 里程计与到点控制（P 控制 + Bug2 避障），导航动作 | Python |
+| | [04](lessons/04_slam_mapping/) | SLAM 建图，地图文件格式 | Python + 配置 |
 | | [05](lessons/05_nav2_navigation/) | Nav2 导航与多点巡逻 | Python + 配置 |
 | 三、感知 | 06 | 相机与 OpenCV 颜色跟随 | Python |
 | 四、Rust 与工程化 | 07 | Rust 节点：安全守护 | Rust |
@@ -53,7 +53,9 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 | | 09（可选） | MoveIt 2 机械臂 | Python |
 | | 10（可选） | 综合项目 | 混合 |
 
-三个移动机器人课程在同一个场景里做，可以直接对比：02 课只看眼前（反应式避障），03 课知道自己在哪、要去哪（Bug2），05 课在地图上走最优路径（Nav2）。
+02–05 课层层递进，可以直接对比：02 课只看眼前（反应式避障），03 课知道自己在哪、要去哪（Bug2，只靠里程计），
+04 课用雷达修正位置并画出地图（SLAM），05 课在地图上规划最优路径（Nav2）。
+02、04、05 课使用同一个 turtlebot3_world 场景；03 课为了演示 Bug2 用了自己的练习场（一堵墙、一个方块、一根圆柱）。
 
 ## TODO 清单
 
@@ -116,7 +118,7 @@ ros2_playground/
 ├─ setup/               一键安装脚本（Windows + WSL2）
 ├─ common/              各课共享的功能包
 │   ├─ pg_interfaces/   自定义消息、服务、动作
-│   └─ pg_sim/          仿真启动、场景、地图
+│   └─ pg_sim/          仿真启动（支持无窗口）、RViz 配置、地图
 └─ lessons/             每课一个文件夹，内含 README 和功能包
 ```
 

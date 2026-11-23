@@ -22,15 +22,30 @@ import sys
 
 from nav_msgs.msg import Odometry
 from pg_obstacle_avoidance_py.safety import footprint_clearance, TripMonitor
+from rcl_interfaces.msg import ParameterDescriptor
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 
-# TurtleBot3 waffle：车身 0.266 m 见方，雷达在中心；两侧轮子略微突出，半宽取 0.155 m
+# TurtleBot3 waffle 的车身矩形（以雷达为中心），单位 m：
+#   前后：车身约 0.266 m 长，半长 0.133，再留 7 mm 余量 → 0.14（车身 0.280 m）
+#   左右：两侧轮子比车身略微突出，半宽取 0.155（车身 0.310 m）
+# 余量让"净空"偏保守：报告的净空比真实的略小，不会把擦边算成没碰到
 DEFAULT_HALF_LENGTH = 0.14
 DEFAULT_HALF_WIDTH = 0.155
+
+# 参数名 → (默认值, 说明)。只在启动时读取，声明为只读
+PARAMS = {
+    'half_length': (DEFAULT_HALF_LENGTH, '车身矩形半长（雷达到车头/车尾），m'),
+    'half_width': (DEFAULT_HALF_WIDTH, '车身矩形半宽（雷达到左右两侧），m'),
+    'contact_distance': (0.03, '净空小于此值记为一次接触，m'),
+    'stuck_time': (30.0, '在这么长时间内移动不到 stuck_distance 记为卡住，s'),
+    'stuck_distance': (0.10, '判断卡住的移动距离，m'),
+    'report_period': (30.0, '多久打印一次阶段报告（ROS 时间），s'),
+    'duration': (0.0, '验收时长（ROS 时间），s；0 表示一直运行'),
+}
 
 
 class SafetyMonitor(Node):
@@ -39,13 +54,18 @@ class SafetyMonitor(Node):
     def __init__(self):
         """声明参数，创建订阅和报告定时器。"""
         super().__init__('safety_monitor')
-        self._half_length = self.declare_parameter('half_length', DEFAULT_HALF_LENGTH).value
-        self._half_width = self.declare_parameter('half_width', DEFAULT_HALF_WIDTH).value
-        contact = self.declare_parameter('contact_distance', 0.03).value
-        stuck_time = self.declare_parameter('stuck_time', 30.0).value
-        stuck_distance = self.declare_parameter('stuck_distance', 0.10).value
-        report_period = self.declare_parameter('report_period', 30.0).value
-        self._duration = self.declare_parameter('duration', 0.0).value
+        values = {
+            name: self.declare_parameter(
+                name, default,
+                ParameterDescriptor(description=description, read_only=True)).value
+            for name, (default, description) in PARAMS.items()}
+        self._half_length = values['half_length']
+        self._half_width = values['half_width']
+        contact = values['contact_distance']
+        stuck_time = values['stuck_time']
+        stuck_distance = values['stuck_distance']
+        report_period = values['report_period']
+        self._duration = values['duration']
 
         self._monitor = TripMonitor(contact, stuck_time, stuck_distance)
         self.passed = None   # 到达 duration 后填入验收结果

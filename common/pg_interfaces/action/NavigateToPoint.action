@@ -12,7 +12,7 @@ float64 tolerance
 # ---------- 结果 ----------
 # 是否到达目标
 bool success
-# 结束原因：到达 / 被取消 / 超时 / 无法到达
+# 结束原因（中文说明）：已到达 / 被取消 / 被新目标取代 / 超时 / 无法到达 / 节点正在关闭
 string message
 # 实际行驶的路程（米）
 float64 distance_traveled

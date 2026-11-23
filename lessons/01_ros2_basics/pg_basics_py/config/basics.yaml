@@ -14,4 +14,4 @@
 /**/greeter:
   ros__parameters:
     publish_rate_hz: 2.0            # 发布频率，单位 Hz，范围 0.1 ~ 50
-    greeting_text: "Hello from launch"
+    greeting_text: "Hello from launch"   # 问候语，不能为空；与代码里的默认值不同，方便看出参数文件生效了
