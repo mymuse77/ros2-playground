@@ -31,6 +31,8 @@ setup(
     entry_points={
         'console_scripts': [
             'go_to_goal = pg_go_to_goal_py.go_to_goal_node:main',
+            'navigate_server = pg_go_to_goal_py.navigate_server_node:main',
+            'navigate_client = pg_go_to_goal_py.navigate_client_node:main',
         ],
     },
 )

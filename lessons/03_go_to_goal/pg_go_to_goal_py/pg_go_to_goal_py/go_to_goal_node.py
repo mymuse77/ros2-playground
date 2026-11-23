@@ -24,6 +24,7 @@ from nav_msgs.msg import Odometry
 from pg_go_to_goal_py.go_to_goal import compute_go_to_goal, GoToGoalParams
 from pg_go_to_goal_py.ros_utils import (init_with_safe_shutdown, make_twist_stamped,
                                         pose_from_odometry, publish_stop, spin_until_shutdown)
+from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.node import Node
 
 ODOM_FRAME = 'odom'
@@ -35,18 +36,22 @@ class GoToGoalNode(Node):
     def __init__(self):
         """声明参数，创建订阅、发布和控制定时器。"""
         super().__init__('go_to_goal')
-        defaults = GoToGoalParams()
+        # 参数只在启动时读取一次（与 navigate_server 不同，这里没有参数回调），
+        # 所以全部声明为只读：运行中 `ros2 param set` 会被明确拒绝，而不是"设置成功但没效果"
+        d = GoToGoalParams()
         self._params = GoToGoalParams(
-            k_linear=self.declare_parameter('k_linear', defaults.k_linear).value,
-            k_angular=self.declare_parameter('k_angular', defaults.k_angular).value,
-            max_linear_speed=self.declare_parameter(
-                'max_linear_speed', defaults.max_linear_speed).value,
-            max_angular_speed=self.declare_parameter(
-                'max_angular_speed', defaults.max_angular_speed).value,
-            goal_tolerance=self.declare_parameter(
-                'goal_tolerance', defaults.goal_tolerance).value,
-            rotate_threshold=math.radians(self.declare_parameter(
-                'rotate_threshold_deg', math.degrees(defaults.rotate_threshold)).value))
+            k_linear=self._declare('k_linear', d.k_linear, '线速度增益，(m/s)/m'),
+            k_angular=self._declare('k_angular', d.k_angular, '角速度增益，(rad/s)/rad'),
+            max_linear_speed=self._declare(
+                'max_linear_speed', d.max_linear_speed, '最大线速度，m/s'),
+            max_angular_speed=self._declare(
+                'max_angular_speed', d.max_angular_speed, '最大角速度，rad/s'),
+            goal_tolerance=self._declare(
+                'goal_tolerance', d.goal_tolerance, '到达容差，m'),
+            rotate_threshold=math.radians(self._declare(
+                'rotate_threshold_deg', math.degrees(d.rotate_threshold),
+                '朝向误差大于此角度时先原地转向，度')))
+        rate_hz = self._declare('control_rate_hz', 10.0, '控制频率，Hz')
 
         self._pose = None   # 最新位姿 Pose2D
         self._goal = None   # 当前目标 (x, y)；None 表示没有任务
@@ -54,9 +59,13 @@ class GoToGoalNode(Node):
         self._cmd_pub = self.create_publisher(TwistStamped, 'cmd_vel', 10)
         self.create_subscription(Odometry, 'odom', self._on_odom, 10)
         self.create_subscription(PoseStamped, 'goal_pose', self._on_goal, 10)
-        rate_hz = self.declare_parameter('control_rate_hz', 10.0).value
         self.create_timer(1.0 / rate_hz, self._on_control)
         self.get_logger().info('到点控制已启动，等待目标（/goal_pose，odom 坐标系）')
+
+    def _declare(self, name, default, description):
+        """声明一个只读参数并返回它的值（参数文件里的值优先）。"""
+        descriptor = ParameterDescriptor(description=description, read_only=True)
+        return self.declare_parameter(name, default, descriptor).value
 
     def _on_odom(self, msg):
         """里程计回调：保存当前位姿。"""

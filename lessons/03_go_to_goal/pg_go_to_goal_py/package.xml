@@ -9,8 +9,15 @@
 
   <!-- 运行依赖 -->
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <!-- NavigateToPoint 动作接口；action_msgs 提供目标状态常量 -->
+  <exec_depend>pg_interfaces</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
   <!-- 复用 02 课的扇区距离函数 -->
   <exec_depend>pg_obstacle_avoidance_py</exec_depend>
 

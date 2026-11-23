@@ -15,8 +15,8 @@ from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.signals import SignalHandlerOptions
 
-SPIN_TIMEOUT_S = 0.1
-STOP_ACK_TIMEOUT = Duration(seconds=1.0)
+SPIN_TIMEOUT_S = 0.1                       # spin_once 每次最多等待的时间：Ctrl+C 的最长响应延迟，s
+STOP_ACK_TIMEOUT = Duration(seconds=1.0)   # 发停车指令后等待订阅者确认收到的时间
 
 
 def pose_from_odometry(msg):
@@ -32,6 +32,8 @@ def make_twist_stamped(command, stamp, frame_id='base_footprint'):
 
     :param command: 有 linear、angular 属性的对象（m/s、rad/s）
     :param stamp: 时间戳 builtin_interfaces/Time
+    :param frame_id: 速度所在的坐标系，差速车的速度以车体坐标系 base_footprint 表示
+    :return: geometry_msgs/msg/TwistStamped
     """
     msg = TwistStamped()
     msg.header.stamp = stamp
