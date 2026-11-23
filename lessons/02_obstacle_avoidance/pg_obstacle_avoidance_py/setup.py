@@ -29,6 +29,7 @@ setup(
     # 节点入口：`ros2 run pg_obstacle_avoidance_py <名字>` 中的名字 = 模块:函数
     entry_points={
         'console_scripts': [
+            'avoider = pg_obstacle_avoidance_py.avoider_node:main',
         ],
     },
 )

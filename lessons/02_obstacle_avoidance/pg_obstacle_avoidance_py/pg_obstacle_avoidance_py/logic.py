@@ -15,7 +15,7 @@
    ──────────[ 车 ]──────────     ← 车后方的读数不参与决策
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from enum import Enum
 import math
 
@@ -139,6 +139,50 @@ class AvoidanceParams:
         for ok, message in checks:
             if not ok:
                 raise ValueError(message)
+
+
+# AvoidanceParams 中以弧度存储、但对外（ROS 参数）以"度"表示的字段
+ANGLE_FIELDS = ('front_half_angle', 'side_angle')
+DEG_SUFFIX = '_deg'
+
+
+def to_ros_params(params):
+    """
+    把 AvoidanceParams 转换成 ROS 参数字典。
+
+    角度字段换算成度，名字加 _deg 后缀（如 front_half_angle → front_half_angle_deg），
+    其他字段名字和数值不变。节点用它声明参数及默认值。
+
+    :param params: AvoidanceParams
+    :return: dict，ROS 参数名 → 数值
+    """
+    result = {}
+    for f in fields(params):
+        value = getattr(params, f.name)
+        if f.name in ANGLE_FIELDS:
+            # 四舍五入去掉浮点误差，避免显示成 29.999999999999996
+            result[f.name + DEG_SUFFIX] = round(math.degrees(value), 6)
+        else:
+            result[f.name] = value
+    return result
+
+
+def from_ros_params(values):
+    """
+    把 ROS 参数字典转换回 AvoidanceParams，是 to_ros_params() 的逆操作。
+
+    :param values: dict，ROS 参数名 → 数值；可以只包含部分参数，缺少的取默认值
+    :return: AvoidanceParams
+    :raises ValueError: 参数之间的约束不满足
+    :raises TypeError: 包含未知的参数名
+    """
+    kwargs = {}
+    for name, value in values.items():
+        if name.endswith(DEG_SUFFIX) and name[:-len(DEG_SUFFIX)] in ANGLE_FIELDS:
+            kwargs[name[:-len(DEG_SUFFIX)]] = math.radians(value)
+        else:
+            kwargs[name] = float(value)
+    return AvoidanceParams(**kwargs)
 
 
 class State(Enum):
