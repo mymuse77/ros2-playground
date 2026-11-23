@@ -180,10 +180,16 @@ class TestBug2Steps:
         assert self.planner.hit_point == (0, 0)
 
     def test_obstacle_beyond_goal_is_ignored(self):
-        # 目标在 0.3 m 处，障碍物在 0.4 m 处：直接去目标，不绕
-        self.planner.start(Pose2D(0, 0, 0), 0.3, 0.0)
+        """目标 0.15 m + 车体半径 0.22 m < 障碍物 0.4 m：车能停在目标上，直接去，不绕。"""
+        self.planner.start(Pose2D(0, 0, 0), 0.15, 0.0)
         self.planner.update(Pose2D(0, 0, 0), FakeScan().with_obstacle(-20, 20, 0.4))
         assert self.planner.state is Bug2State.GO_TO_GOAL
+
+    def test_goal_against_obstacle_starts_wall_following(self):
+        """目标比障碍物近，但车身放不下（0.3 + 0.22 > 0.4）：不能直接去，要绕。"""
+        self.planner.start(Pose2D(0, 0, 0), 0.3, 0.0)
+        self.planner.update(Pose2D(0, 0, 0), FakeScan().with_obstacle(-20, 20, 0.4))
+        assert self.planner.state is Bug2State.FOLLOW_WALL
 
     def test_reached(self):
         self.planner.start(Pose2D(0, 0, 0), 0.05, 0.0)
@@ -251,3 +257,16 @@ def test_closed_loop_unreachable_goal_fails():
     """目标被一个封闭的方框围住，应在绕一圈后报告失败。"""
     state, _, _ = run_bug2(box(3.0, 0.0, 0.8, 0.8), goal=(3.0, 0.0))
     assert state is Bug2State.FAILED
+
+
+@pytest.mark.parametrize('goal', [(-1.5, 1.5), (-1.4, 1.6)])
+def test_closed_loop_goal_inside_box_fails(goal):
+    """
+    与仿真场景相同：0.6 m 方块在 (-1.5, 1.5)，目标在方块中心或偏向车的一侧。
+
+    第二个目标模拟仿真中观察到的里程计偏差：方块看起来离目标比实际更近。
+    """
+    state, seen, nearest = run_bug2(box(-1.5, 1.5, 0.3, 0.3), goal=goal)
+    assert state is Bug2State.FAILED
+    assert Bug2State.FOLLOW_WALL in seen
+    assert nearest > 0.15

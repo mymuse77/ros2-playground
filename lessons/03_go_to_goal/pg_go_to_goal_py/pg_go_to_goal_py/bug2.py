@@ -93,12 +93,15 @@ class Bug2Params:
     min_follow_distance: float = 0.50   # 沿边走过这么远之后，才开始判断离开或绕圈
     loop_tolerance: float = 0.25        # 回到碰撞点这么近，视为绕了一圈
     front_half_angle: float = math.radians(25.0)   # 前方扇区半角
+    # 车体半径：车中心离障碍物至少这么远。TurtleBot3 Waffle 约 0.22 m（与 Nav2 的配置相同）
+    robot_radius: float = 0.22
 
     def __post_init__(self):
         """检查参数取值，不满足时抛出 ValueError。"""
         positives = [self.hit_distance, self.wall_distance, self.k_wall, self.k_wall_angle,
                      self.wall_speed, self.wall_turn_speed, self.mline_tolerance,
-                     self.min_follow_distance, self.loop_tolerance, self.front_half_angle]
+                     self.min_follow_distance, self.loop_tolerance, self.front_half_angle,
+                     self.robot_radius]
         if min(positives) <= 0.0:
             raise ValueError('Bug2 的距离、速度、增益、角度参数都必须大于 0')
         if self.leave_margin < 0.0:
@@ -135,6 +138,8 @@ def wall_follow_command(scan, params):
       - 前方被挡住：原地左转，把障碍物转到右侧
       - 右半边没有 2 倍 wall_distance 以内的障碍（丢了墙）：以 wall_distance 为半径向右画弧找墙
 
+    :param scan: 雷达数据（LaserScan 或兼容对象）
+    :param params: Bug2Params
     :return: Command
     """
     p = params
@@ -232,8 +237,7 @@ class Bug2Planner:
 
         if self._state is Bug2State.GO_TO_GOAL:
             front = range_toward(scan, 0.0, p.front_half_angle)
-            # 被挡住，而且障碍物比目标还近（目标就在障碍物前面时不用绕）
-            if front < p.hit_distance and front < goal_distance:
+            if self._blocked(front, goal_distance):
                 self._enter_follow_wall(pose, goal_distance)
             else:
                 return self._go_to_goal(pose)
@@ -260,7 +264,14 @@ class Bug2Planner:
         self._last_position = (pose.x, pose.y)
 
     def _can_leave(self, pose, scan, goal_distance):
-        """Bug2 的离开条件：在 M-line 上、比碰撞点更近、朝目标方向畅通。"""
+        """
+        Bug2 的离开条件：在 M-line 上、比碰撞点更近、朝目标方向畅通。
+
+        :param pose: 当前位姿 Pose2D
+        :param scan: 雷达数据
+        :param goal_distance: 当前到目标的距离，m
+        :return: bool
+        """
         p = self.params
         on_mline = abs(distance_to_line(pose.x, pose.y, *self._start, *self._goal)) \
             < p.mline_tolerance
@@ -268,7 +279,24 @@ class Bug2Planner:
         if not (on_mline and closer):
             return False
         toward_goal = range_toward(scan, heading_error(pose, *self._goal), p.front_half_angle)
-        return toward_goal > p.hit_distance
+        return not self._blocked(toward_goal, goal_distance)
+
+    def _blocked(self, clearance, goal_distance):
+        """
+        某个方向是否被挡住：障碍物近（< hit_distance），而且车开到目标点之前就会碰到它。
+
+        车中心到达目标时，车头已经伸到 goal_distance + robot_radius 处。障碍物比这近，
+        就说明目标点贴着甚至在障碍物里面，车无法到达，必须绕行，最终由绕圈判定失败。
+        只比较 clearance < goal_distance 是不够的：开发时在仿真中遇到过，目标在方块中心，
+        里程计误差加上雷达装在车中心后方，使"障碍物比目标近"不成立，车直接顶着方块
+        原地打滑，里程计却显示已到达。
+
+        :param clearance: 该方向上最近障碍的距离，m
+        :param goal_distance: 到目标点的距离，m
+        :return: bool
+        """
+        p = self.params
+        return clearance < p.hit_distance and clearance < goal_distance + p.robot_radius
 
     def _go_to_goal(self, pose):
         """朝目标点的 P 控制指令。"""
