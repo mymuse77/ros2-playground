@@ -11,6 +11,8 @@
   <exec_depend>rclpy</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <!-- 复用 02 课的扇区距离函数 -->
+  <exec_depend>pg_obstacle_avoidance_py</exec_depend>
 
   <!-- 测试依赖：代码风格检查、文档字符串检查、单元测试框架 -->
   <test_depend>ament_flake8</test_depend>
