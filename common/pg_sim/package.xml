@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>pg_sim</name>
+  <version>0.1.0</version>
+  <description>ROS 2 Playground 共享仿真资源：TurtleBot3 仿真启动（支持无窗口模式）、RViz 配置、地图</description>
+  <maintainer email="mymuse@foxmail.com">Richie</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- 运行时依赖：Gazebo 与 ROS 的桥接、TurtleBot3 的模型和场景 -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>ros_gz_image</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>turtlebot3_gazebo</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

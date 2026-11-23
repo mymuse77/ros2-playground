@@ -63,7 +63,7 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 - [x] 仓库骨架：README、LICENSE、`.gitignore`、`docs/`
 - [x] 一键安装脚本放入 `setup/`
 - [x] 公共包 `pg_interfaces`：自定义消息、服务、动作
-- [ ] 公共包 `pg_sim`：仿真启动（支持无窗口模式）
+- [x] 公共包 `pg_sim`：仿真启动（支持无窗口模式）
 
 ### 阶段一：基础（01 课）
 - [ ] 话题：发布者与订阅者（使用自定义消息）
