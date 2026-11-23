@@ -1,0 +1,35 @@
+# 03 课导航节点参数（navigate_sim.launch.py 默认加载）。
+# 键 /** 表示任意命名空间，节点名必须与 launch 中的 name 一致。
+# 改完重新 launch 即可；navigate_server 的参数也可以运行时用 ros2 param set 修改，
+# 对下一个目标生效（control_rate_hz 除外，它是只读的）。不合法的组合会被拒绝。
+
+/**/navigate_server:
+  ros__parameters:
+    # ---- 朝目标前进（P 控制）----
+    k_linear: 0.5            # 线速度 = k_linear × 距离，(m/s)/m
+    k_angular: 1.5           # 角速度 = k_angular × 朝向误差，(rad/s)/rad
+    max_linear_speed: 0.22   # m/s，TurtleBot3 Waffle 的上限约 0.26
+    max_angular_speed: 1.0   # rad/s
+    goal_tolerance: 0.10     # m，目标里没给容差时使用
+
+    # ---- Bug2 沿边走 ----
+    hit_distance: 0.45       # m，前方小于此距离视为被挡住，开始沿边走
+    wall_distance: 0.40      # m，沿边走时与障碍保持的距离（右手贴墙）
+    wall_speed: 0.12         # m/s，沿边走的线速度
+    robot_radius: 0.22       # m，车体半径。目标离障碍物比这近时车停不上去，按"被挡住"处理
+
+    # ---- 安全 ----
+    goal_timeout: 300.0      # s（仿真时间），超时未到达则中止
+    data_timeout: 0.5        # s（真实时间），雷达或里程计中断超过此时间则停车等待
+    control_rate_hz: 10.0    # Hz
+
+# go_to_goal（mode:=p）的参数都是只读的，只在启动时读取：改完需要重新 launch
+/**/go_to_goal:
+  ros__parameters:
+    k_linear: 0.5                # 线速度 = k_linear × 距离，(m/s)/m
+    k_angular: 1.5               # 角速度 = k_angular × 朝向误差，(rad/s)/rad
+    max_linear_speed: 0.22       # m/s
+    max_angular_speed: 1.0       # rad/s
+    goal_tolerance: 0.10         # m，距离小于此值即视为到达
+    rotate_threshold_deg: 45.0   # 度，朝向误差大于此角度时先原地转向，再前进
+    control_rate_hz: 10.0        # Hz
