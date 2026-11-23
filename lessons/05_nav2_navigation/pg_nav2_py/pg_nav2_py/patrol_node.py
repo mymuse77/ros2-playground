@@ -256,9 +256,14 @@ def main(args=None):
     try:
         node.run()
     except KeyboardInterrupt:
+        # 在终端里对 ros2 launch 按 Ctrl+C 会收到两次 SIGINT（终端发给整个进程组一次，
+        # launch 再转发一次）。第一次已经让我们来到这里，之后忽略，免得取消目标、打印汇总
+        # 的过程被第二次打断
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         node.schedule.stop('Ctrl+C')
         node.cancel_current()
     finally:
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         node.schedule.stop('异常退出')    # 正常结束或 Ctrl+C 时已有原因，这里不会覆盖
         node.log_summary()
         # 有任何一个航点没到达，就用非零退出码告诉调用者（例如验收脚本）

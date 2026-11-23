@@ -4,6 +4,8 @@
 启动后小车已经在地图原点定位好（参数文件里 amcl.set_initial_pose: true），
 在 RViz 里用"2D Goal Pose"点一个目标，小车就会规划路径并开过去。
 加上 patrol:=true 则同时启动巡逻节点，按 config/waypoints.yaml 循环巡逻。
+加上 acceptance:=true 是仿真验收：巡逻 + 02 课的安全监视节点（独立统计净空和接触），
+巡逻结束后整个 launch 自动退出，适合无窗口跑完就看结果。
 
 Nav2 本身由 nav2_bringup 的 bringup_launch.py 启动，它再分成两部分：
   localization_launch.py   map_server + amcl                     （地图和定位）
@@ -14,6 +16,7 @@ Nav2 本身由 nav2_bringup 的 bringup_launch.py 启动，它再分成两部分
   ros2 launch pg_nav2_py nav2_sim.launch.py
   ros2 launch pg_nav2_py nav2_sim.launch.py patrol:=true
   ros2 launch pg_nav2_py nav2_sim.launch.py patrol:=true loops:=1 controller:=RPP
+  ros2 launch pg_nav2_py nav2_sim.launch.py acceptance:=true loops:=3 gui:=false rviz:=false
   ros2 launch pg_nav2_py nav2_sim.launch.py --show-args
 """
 
@@ -21,11 +24,14 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (DeclareLaunchArgument, EmitEvent, GroupAction,
+                            IncludeLaunchDescription, LogInfo, RegisterEventHandler)
 from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch.substitutions import LaunchConfiguration, OrSubstitution
+from launch_ros.actions import Node, SetParameter
 from launch_ros.parameter_descriptions import ParameterValue
 
 
@@ -63,7 +69,11 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'controller', default_value='',
             description='控制器：FollowPath（DWB）| RPP | MPPI，空表示默认（FollowPath）'),
+        DeclareLaunchArgument(
+            'acceptance', default_value='false',
+            description='仿真验收：巡逻 + 安全监视，巡逻结束后自动退出（一般配合 loops:=N）'),
     ]
+    acceptance = LaunchConfiguration('acceptance')
 
     # 仿真：固定使用 turtlebot3_world 场景（地图是在这个场景里建的），出生点用默认值，
     # 正好是建图时的起点，也就是地图坐标系的原点
@@ -80,15 +90,25 @@ def generate_launch_description():
     # Nav2：use_composition 设为 False，每个节点一个进程。
     # 默认的 True 会把所有节点装进同一个容器进程，省内存；这里为了学习时能用
     # ros2 node list / top 分别看到每个节点（例如对比控制器时看 controller_server 的 CPU 占用）
-    nav2 = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(bringup_launch),
-        launch_arguments={
-            'map': LaunchConfiguration('map'),
-            'params_file': LaunchConfiguration('params_file'),
-            'use_sim_time': 'true',
-            'autostart': 'true',
-            'use_composition': 'False',
-        }.items())
+    #
+    # bond_timeout = 0：关闭 lifecycle_manager 和各节点之间的心跳（bond）。
+    # 心跳按墙钟计时，默认 4 s 收不到就判定节点挂了，把整组节点都关掉。在 WSL2 上仿真把 CPU
+    # 占满时（或系统时钟跳变时）偶尔会误判，巡逻跑到一半 Nav2 突然全部停掉。仿真里节点真挂了
+    # 日志会直接报 process has died，心跳的用处不大，所以关掉。实车上应保留默认值。
+    # lifecycle_manager 不读参数文件（nav2_bringup 只传了 autostart 和 node_names），
+    # 所以用 SetParameter 设置；放在 GroupAction 里，只作用于 Nav2 的节点
+    nav2 = GroupAction([
+        SetParameter('bond_timeout', 0.0),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(bringup_launch),
+            launch_arguments={
+                'map': LaunchConfiguration('map'),
+                'params_file': LaunchConfiguration('params_file'),
+                'use_sim_time': 'true',
+                'autostart': 'true',
+                'use_composition': 'False',
+            }.items()),
+    ])
 
     # 巡逻节点：自己会等 Nav2 就绪，所以和 Nav2 同时启动即可。
     # planner、controller 可能是空字符串，要用 ParameterValue 指明类型，
@@ -102,6 +122,23 @@ def generate_launch_description():
             'planner': ParameterValue(LaunchConfiguration('planner'), value_type=str),
             'controller': ParameterValue(LaunchConfiguration('controller'), value_type=str),
         }],
-        condition=IfCondition(LaunchConfiguration('patrol')))
+        condition=IfCondition(OrSubstitution(LaunchConfiguration('patrol'), acceptance)))
 
-    return LaunchDescription(declare_args + [simulation, nav2, patrol])
+    # ── 仿真验收（acceptance:=true）──
+    # 安全监视节点（02 课）只订阅 /scan、/odom，独立于 Nav2 统计车身净空和接触次数。
+    # 不设 duration，一直统计到 launch 退出；收到 Ctrl+C（launch 退出时发出）会打印最终报告
+    safety = Node(
+        package='pg_obstacle_avoidance_py', executable='safety_monitor', output='screen',
+        parameters=[{'use_sim_time': True}],
+        condition=IfCondition(acceptance))
+    # 巡逻节点退出（跑完圈数、连续失败或出错）时，关闭整个 launch。
+    # 巡逻节点的退出码：0 = 所有航点都到达，1 = 有航点没到达（launch 会打印 process has died）
+    shutdown_after_patrol = RegisterEventHandler(
+        OnProcessExit(
+            target_action=patrol,
+            on_exit=[LogInfo(msg='巡逻节点已退出，验收结束，关闭 launch'),
+                     EmitEvent(event=Shutdown(reason='巡逻结束'))]),
+        condition=IfCondition(acceptance))
+
+    return LaunchDescription(
+        declare_args + [simulation, nav2, patrol, safety, shutdown_after_patrol])

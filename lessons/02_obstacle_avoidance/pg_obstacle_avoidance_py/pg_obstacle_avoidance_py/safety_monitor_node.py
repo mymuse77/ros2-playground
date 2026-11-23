@@ -18,6 +18,7 @@
       -p duration:=300.0       （与上一行写在同一行）
 """
 
+import signal
 import sys
 
 from nav_msgs.msg import Odometry
@@ -116,6 +117,10 @@ def main(args=None):
     except (KeyboardInterrupt, ExternalShutdownException):
         node._log_report(final=True)
     finally:
+        # 在终端里对 ros2 launch 按 Ctrl+C 时，节点会收到两次 SIGINT：终端发给整个进程组一次，
+        # launch 再转发一次。第二次如果落在下面的清理过程中，会打断 destroy_node()、
+        # 打出一大段 KeyboardInterrupt。最终报告已经打印了，清理期间忽略 SIGINT
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         passed = node.passed
         node.destroy_node()
         rclpy.try_shutdown()

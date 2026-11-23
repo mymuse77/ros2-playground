@@ -29,6 +29,8 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
+  <!-- 仿真验收：02 课的安全监视节点 safety_monitor -->
+  <exec_depend>pg_obstacle_avoidance_py</exec_depend>
 
   <!-- 测试依赖：代码风格检查、文档字符串检查、单元测试框架 -->
   <test_depend>ament_flake8</test_depend>

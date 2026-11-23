@@ -354,11 +354,16 @@ controller_server:
     min_y_velocity_threshold: 0.001
     min_theta_velocity_threshold: 0.001
     failure_tolerance: 0.3
-    # 进度检查：10 s 内没移动 0.1 m 就判定"卡住了"，交给行为树去恢复
+    # 进度检查：10 s 内既没移动 0.1 m、也没转过 0.5 rad，就判定"卡住了"，交给行为树去恢复。
+    # 【改】官方用 SimpleProgressChecker，只看平移：到了航点附近原地转向目标朝向时，
+    # 车只转不走，仿真一慢就可能被误判为卡住。PoseProgressChecker 把转动也算作进展。
+    # （本课验收时到点后反复"卡住"，主要原因是 DWB 的 xy_goal_tolerance 和 goal_checker
+    # 不一致，见下面 FollowPath 的注释；这里是让转向阶段的判定更合理）
     progress_checker_plugins: ["progress_checker"]
     progress_checker:
-      plugin: "nav2_controller::SimpleProgressChecker"
+      plugin: "nav2_controller::PoseProgressChecker"
       required_movement_radius: 0.1
+      required_movement_angle: 0.5
       movement_time_allowance: 10.0
     # 到达判定：位置误差 < 0.25 m 且朝向误差 < 0.25 rad（约 14°）
     goal_checker_plugins: ["goal_checker"]
@@ -398,7 +403,12 @@ controller_server:
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.5
-      xy_goal_tolerance: 0.05
+      # 【改】0.05 → 0.25，与上面 goal_checker 的 xy_goal_tolerance 一致。
+      # DWB 的 RotateToGoal 评价器要等小车进入这个半径才开始"原地转向目标朝向"；
+      # 而 goal_checker 进入 0.25 m 就认为位置到了、只等朝向。两者不一致时，小车停在
+      # 0.05–0.25 m 之间：goal_checker 等它转，DWB 还想往前挪，结果只输出很小的角速度，
+      # 被进度检查判定卡住（本课验收时在 home 点出现过：剩余 0.05 m 停住，反复恢复）
+      xy_goal_tolerance: 0.25
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: true
       stateful: true

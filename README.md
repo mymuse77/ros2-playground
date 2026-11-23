@@ -93,7 +93,7 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 - [x] 04 课 README
 - [x] 05 Nav2 导航 launch（使用 04 课的地图）
 - [x] 05 多点巡逻节点（`nav2_simple_commander`）
-- [ ] 05 仿真验收：自动循环巡逻
+- [x] 05 仿真验收：自动循环巡逻
 - [ ] 05 课 README（含规划器、控制器对比实验）
 
 ### 后续阶段（06–10 课）
