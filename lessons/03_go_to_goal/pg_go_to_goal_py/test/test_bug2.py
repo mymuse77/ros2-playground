@@ -86,15 +86,18 @@ class TestRangeToward:
     """可跨越正后方的扇区。"""
 
     def test_front(self):
+        """正前方 ±5° 内 1.0 m 处有障碍：前方扇区返回 1.0。"""
         scan = FakeScan().with_obstacle(-5, 5, 1.0)
         assert range_toward(scan, 0.0, math.radians(20)) == pytest.approx(1.0)
 
     def test_across_rear(self):
+        """扇区中心在 175°、跨越正后方：-170° 处的障碍也被统计，返回 0.8。"""
         # 中心在 175°，扇区 155° ~ 195°（即 -165°），障碍在 -170°
         scan = FakeScan().with_obstacle(-170, -170, 0.8)
         assert range_toward(scan, math.radians(175), math.radians(20)) == pytest.approx(0.8)
 
     def test_across_rear_negative_side(self):
+        """扇区中心在 -175°、跨越正后方：170° 处的障碍也被统计，返回 0.6。"""
         scan = FakeScan().with_obstacle(170, 170, 0.6)
         assert range_toward(scan, math.radians(-175), math.radians(20)) == pytest.approx(0.6)
 
@@ -103,16 +106,19 @@ class TestNearestObstacle:
     """扇区内最近障碍点（距离 + 方向）。"""
 
     def test_distance_and_bearing(self):
+        """右半边有两处障碍：返回最近的 0.5 m 及其方向 -30°。"""
         scan = FakeScan().with_obstacle(-100, -80, 1.0).with_obstacle(-30, -30, 0.5)
         dist, bearing = nearest_obstacle(scan, -math.pi, 0.0)
         assert dist == pytest.approx(0.5)
         assert bearing == pytest.approx(math.radians(-30))
 
     def test_outside_sector_ignored(self):
+        """障碍只在左边（扇区为右半边）：不计入，返回 (inf, 0.0)。"""
         scan = FakeScan().with_obstacle(45, 45, 0.3)      # 在左边
         assert nearest_obstacle(scan, -math.pi, 0.0) == (math.inf, 0.0)
 
     def test_invalid_readings_ignored(self):
+        """扇区内只有 nan 和小于 range_min 的读数：全部忽略，最近距离为 inf。"""
         scan = FakeScan().with_obstacle(-90, -90, float('nan')).with_obstacle(-60, -60, 0.05)
         assert nearest_obstacle(scan, -math.pi, 0.0)[0] == math.inf
 
@@ -121,14 +127,17 @@ class TestWallFollow:
     """右手沿边走。"""
 
     def setup_method(self):
+        """每个测试前创建默认的 Bug2Params。"""
         self.params = Bug2Params()
 
     def test_front_blocked_turns_left(self):
+        """正前方 0.3 m 被挡：原地左转（线速度 0，角速度为正）。"""
         scan = FakeScan().with_obstacle(-10, 10, 0.3)
         command = wall_follow_command(scan, self.params)
         assert command.linear == 0.0 and command.angular > 0.0
 
     def test_keeps_distance(self):
+        """右侧墙距 0.25、0.6、0.4 m：太近向左偏，太远向右偏，正好时以 wall_speed 直行。"""
         too_close = wall_follow_command(right_wall_scan(0.25), self.params)
         too_far = wall_follow_command(right_wall_scan(0.6), self.params)
         exact = wall_follow_command(right_wall_scan(0.4), self.params)
@@ -138,18 +147,18 @@ class TestWallFollow:
         assert exact.linear == pytest.approx(self.params.wall_speed)
 
     def test_heading_toward_wall_turns_left(self):
-        # 距离正好，但车头向右偏了 20°，正朝墙开过去：最近点在右前方，应向左修正
+        """距离正好，但车头向右偏了 20°，正朝墙开过去：最近点在右前方，应向左修正。"""
         command = wall_follow_command(right_wall_scan(0.4, yaw_deg=-20.0), self.params)
         assert command.angular > 0.0
 
     def test_outer_corner_turns_right(self):
-        # 刚经过外拐角：唯一的障碍点在右后方 -135°，应向右绕着拐角转
+        """刚经过外拐角：唯一的障碍点在右后方 -135°，应边前进边向右绕着拐角转。"""
         scan = FakeScan().with_obstacle(-135, -135, 0.45)
         command = wall_follow_command(scan, self.params)
         assert command.linear > 0.0 and command.angular < 0.0
 
     def test_lost_wall_arcs_right(self):
-        # 右边什么都没有：以 wall_distance 为半径向右画弧
+        """右边什么都没有：以 wall_speed 前进，并以 wall_distance 为半径向右画弧。"""
         command = wall_follow_command(FakeScan(), self.params)
         assert command.linear == pytest.approx(self.params.wall_speed)
         assert command.angular == pytest.approx(
@@ -160,20 +169,24 @@ class TestBug2Steps:
     """状态切换。"""
 
     def setup_method(self):
+        """每个测试前用默认参数新建 Bug2Planner。"""
         self.params = Bug2Params()
         self.planner = Bug2Planner(self.params)
 
     def test_idle_before_start(self):
+        """还没调用 start()：状态为 FAILED，update() 输出的线速度为 0。"""
         assert self.planner.state is Bug2State.FAILED
         assert self.planner.update(Pose2D(0, 0, 0), FakeScan()).linear == 0.0
 
     def test_clear_path_goes_to_goal(self):
+        """start() 后前方没有障碍：进入 GO_TO_GOAL 并向前走。"""
         self.planner.start(Pose2D(0, 0, 0), 3.0, 0.0)
         command = self.planner.update(Pose2D(0, 0, 0), FakeScan())
         assert self.planner.state is Bug2State.GO_TO_GOAL
         assert command.linear > 0.0
 
     def test_obstacle_ahead_starts_wall_following(self):
+        """去 3 m 外目标的路上前方 0.4 m 有障碍：进入 FOLLOW_WALL，当前位置记为 hit_point。"""
         self.planner.start(Pose2D(0, 0, 0), 3.0, 0.0)
         self.planner.update(Pose2D(0, 0, 0), FakeScan().with_obstacle(-20, 20, 0.4))
         assert self.planner.state is Bug2State.FOLLOW_WALL
@@ -192,11 +205,13 @@ class TestBug2Steps:
         assert self.planner.state is Bug2State.FOLLOW_WALL
 
     def test_reached(self):
+        """目标在 0.05 m 处（容差以内）：线速度为 0，状态为 REACHED。"""
         self.planner.start(Pose2D(0, 0, 0), 0.05, 0.0)
         assert self.planner.update(Pose2D(0, 0, 0), FakeScan()).linear == 0.0
         assert self.planner.state is Bug2State.REACHED
 
     def test_start_properties(self):
+        """调用 start()：记录起点、目标和容差，hit_point 为 None。"""
         self.planner.start(Pose2D(1.0, 2.0, 0.0), 3.0, 4.0, tolerance=0.3)
         assert self.planner.start_point == (1.0, 2.0)
         assert self.planner.goal == (3.0, 4.0)
@@ -204,6 +219,7 @@ class TestBug2Steps:
         assert self.planner.hit_point is None
 
     def test_invalid_params(self):
+        """hit_distance 为 0，或 loop_tolerance 大于 min_follow_distance：抛出 ValueError。"""
         with pytest.raises(ValueError):
             Bug2Params(hit_distance=0.0)
         with pytest.raises(ValueError):
