@@ -1,0 +1,26 @@
+# colcon 编译产物（正常情况下生成在 ~/ros2_ws 下，不在仓库里；这里防止误在仓库根目录编译）
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Rust
+target/
+
+# ros2 bag 录包数据（体积大，不提交）
+*.db3
+*.mcap
+rosbag2_*/
+bags/
+
+# 编辑器与系统文件
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
