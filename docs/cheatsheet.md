@@ -53,6 +53,19 @@ ros2 launch pg_basics_py basics.launch.py --show-args     # 查看可传入的�
 ros2 launch pg_sim tb3_sim.launch.py world:=house gui:=false
 ros2 launch pg_obstacle_avoidance_py avoid_sim.launch.py   # 02 课：避障漫游
 ros2 launch pg_go_to_goal_py navigate_sim.launch.py        # 03 课：Bug2 导航（mode:=p 切换为 P 控制）
+ros2 launch pg_slam_py slam_sim.launch.py                  # 04 课：SLAM 建图（explore:=auto 自动漫游）
+```
+
+## 地图与生命周期节点
+
+```bash
+ros2 run turtlebot3_teleop teleop_keyboard                 # TurtleBot3 键盘遥控（需要 TURTLEBOT3_MODEL）
+ros2 run pg_slam_py save_map ~/maps/my_map                 # 04 课：保存地图（.pgm + .yaml）
+ros2 run pg_slam_py save_map --stats-only                  # 只看地图统计：空闲面积、已知比例
+ros2 run nav2_map_server map_saver_cli -f ~/maps/my_map    # Nav2 自带的地图保存工具
+ros2 topic info /map -v                                    # 查看 QoS（地图是 TRANSIENT_LOCAL）
+ros2 lifecycle get /slam_toolbox                           # 生命周期节点的当前状态
+ros2 lifecycle set /slam_toolbox deactivate                # 切换状态：configure / activate / deactivate ...
 ```
 
 ## bag 录制与回放
@@ -69,6 +82,7 @@ ros2 bag play ~/bags/demo --delay 2.0           # 等 2 秒再开始，避免订
 ```bash
 ros2 run tf2_tools view_frames                  # 生成 TF 树的 PDF
 ros2 run tf2_ros tf2_echo odom base_footprint   # 实时打印两个坐标系之间的变换
+ros2 run tf2_ros tf2_echo map odom              # SLAM / 定位对里程计的修正量（04、05 课）
 ```
 
 ## 仿真与调试

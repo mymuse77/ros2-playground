@@ -96,6 +96,17 @@ Jazzy 版 TurtleBot3 的 `/cmd_vel` 类型是 `geometry_msgs/msg/TwistStamped`�
 解决：车中心到达目标时车头伸到"目标距离 + 车体半径"处，改为 `前方距离 < 目标距离 + robot_radius`。
 排查方法：对比 `/odom` 和 Gazebo 的真实位姿 `gz model -m waffle -p`，两者差得多就说明打滑或撞上了。
 
+## 地图（04 课）
+
+**地图图片上下颠倒**
+`OccupancyGrid` 的第 0 行在地图最下面（y 最小），图片的第 0 行在最上面，写图片时要上下翻转，见 `map_io.py` 的 `to_pgm`。
+
+**同一张地图保存两次，结果不一样**
+slam_toolbox 每 `map_update_interval` 秒重新生成一次地图，车还在动时两次保存之间地图已经变了。先停车，等几秒再保存。
+
+**保存工具收不到地图**
+订阅 `/map` 要用 Transient Local（与发布者一致），否则只能收到连上之后的新地图；slam_toolbox 没激活时也没有地图，用 `ros2 lifecycle get /slam_toolbox` 确认是 `active`。
+
 ## 代码风格检查（flake8）
 
 | 报错 | 原因 | 解决 |
