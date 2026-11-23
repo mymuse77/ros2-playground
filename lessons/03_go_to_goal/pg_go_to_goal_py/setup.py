@@ -30,6 +30,7 @@ setup(
     # 节点入口：`ros2 run pg_go_to_goal_py <名字>` 中的名字 = 模块:函数
     entry_points={
         'console_scripts': [
+            'go_to_goal = pg_go_to_goal_py.go_to_goal_node:main',
         ],
     },
 )
