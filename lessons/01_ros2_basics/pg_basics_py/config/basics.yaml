@@ -1,0 +1,17 @@
+# 01 课参数文件：launch 启动时加载到 greeter 节点
+#
+# 格式：
+#   <节点名>:
+#     ros__parameters:      # 固定写法，注意是两个下划线
+#       <参数名>: <值>
+#
+# "/**/greeter" 是通配写法：匹配任意命名空间下名为 greeter 的节点。
+# 这样即使用 namespace:=robot1 启动，参数文件也不用改。
+#
+# 修改本文件后不用重新编译（colcon build --symlink-install 会建符号链接），
+# 重新 launch 即可生效。
+
+/**/greeter:
+  ros__parameters:
+    publish_rate_hz: 2.0            # 发布频率，单位 Hz，范围 0.1 ~ 50
+    greeting_text: "Hello from launch"
