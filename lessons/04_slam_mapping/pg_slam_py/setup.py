@@ -1,4 +1,4 @@
-"""pg_slam_py 包的安装配置：安装 launch、参数和 RViz 文件。"""
+"""pg_slam_py 包的安装配置：注册地图保存工具，安装 launch、参数和 RViz 文件。"""
 
 from glob import glob
 import os
@@ -28,6 +28,8 @@ setup(
     extras_require={'test': ['pytest']},
     # 节点入口：`ros2 run pg_slam_py <名字>` 中的名字 = 模块:函数
     entry_points={
-        'console_scripts': [],
+        'console_scripts': [
+            'save_map = pg_slam_py.map_saver_node:main',
+        ],
     },
 )

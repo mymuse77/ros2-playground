@@ -86,7 +86,7 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 - [x] 03 仿真验收：绕过障碍到达目标点
 - [x] 03 课 README
 - [x] 04 SLAM 建图 launch（键盘遥控 / 自动漫游两种方式）
-- [ ] 04 地图保存工具
+- [x] 04 地图保存工具
 - [ ] 04 生成 turtlebot3_world 地图并放入 `pg_sim`
 - [ ] 04 课 README
 - [ ] 05 Nav2 导航 launch（使用 04 课的地图）
