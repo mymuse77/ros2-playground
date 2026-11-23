@@ -1,0 +1,29 @@
+# 03 课：导航到指定点
+#
+# 让机器人移动到 odom 坐标系下的目标点，途中自动绕开障碍（Bug2 算法）。
+
+# ---------- 目标 ----------
+# 目标点坐标（odom 坐标系，单位：米）
+float64 x
+float64 y
+# 到达判定半径（米）。小于等于 0 时使用服务端参数 goal_tolerance
+float64 tolerance
+---
+# ---------- 结果 ----------
+# 是否到达目标
+bool success
+# 结束原因：到达 / 被取消 / 超时 / 无法到达
+string message
+# 实际行驶的路程（米）
+float64 distance_traveled
+# 用时（秒）
+float64 elapsed_time
+---
+# ---------- 反馈 ----------
+# 当前位置（odom 坐标系，单位：米）
+float64 current_x
+float64 current_y
+# 到目标的直线距离（米）
+float64 distance_remaining
+# 当前所处的状态，例如 GO_TO_GOAL、FOLLOW_WALL
+string state
