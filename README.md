@@ -61,7 +61,7 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 
 ### 阶段 0：仓库准备
 - [x] 仓库骨架：README、LICENSE、`.gitignore`、`docs/`
-- [ ] 一键安装脚本放入 `setup/`
+- [x] 一键安装脚本放入 `setup/`
 - [ ] 公共包 `pg_interfaces`：自定义消息、服务、动作
 - [ ] 公共包 `pg_sim`：仿真启动（支持无窗口模式）
 
