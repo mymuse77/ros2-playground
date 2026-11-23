@@ -92,7 +92,7 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 - [x] 04 生成 turtlebot3_world 地图并放入 `pg_sim`
 - [x] 04 课 README
 - [x] 05 Nav2 导航 launch（使用 04 课的地图）
-- [ ] 05 多点巡逻节点（`nav2_simple_commander`）
+- [x] 05 多点巡逻节点（`nav2_simple_commander`）
 - [ ] 05 仿真验收：自动循环巡逻
 - [ ] 05 课 README（含规划器、控制器对比实验）
 

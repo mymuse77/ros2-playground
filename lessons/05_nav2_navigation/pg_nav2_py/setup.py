@@ -1,4 +1,4 @@
-"""pg_nav2_py 包的安装配置：安装 launch、参数和 RViz 文件。"""
+"""pg_nav2_py 包的安装配置：注册巡逻节点，安装 launch、参数和 RViz 文件。"""
 
 from glob import glob
 import os
@@ -29,6 +29,7 @@ setup(
     # 节点入口：`ros2 run pg_nav2_py <名字>` 中的名字 = 模块:函数
     entry_points={
         'console_scripts': [
+            'patrol = pg_nav2_py.patrol_node:main',
         ],
     },
 )
