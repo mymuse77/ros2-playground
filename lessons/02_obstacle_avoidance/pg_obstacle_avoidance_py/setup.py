@@ -30,6 +30,7 @@ setup(
     entry_points={
         'console_scripts': [
             'avoider = pg_obstacle_avoidance_py.avoider_node:main',
+            'safety_monitor = pg_obstacle_avoidance_py.safety_monitor_node:main',
         ],
     },
 )
