@@ -20,7 +20,7 @@
 ```bash
 # 1. 把仓库克隆到工作空间的 src 目录下（colcon 会在 src 里递归查找所有功能包）
 mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
-git clone https://github.com/mymuse77/ros2_playground.git
+git clone https://github.com/mymuse77/ros2-playground.git
 
 # 2. 安装依赖并编译
 cd ~/ros2_ws
@@ -112,7 +112,7 @@ cd ~/ros2_ws && colcon test && colcon test-result --verbose
 ## 目录结构
 
 ```
-ros2_playground/
+ros2-playground/
 ├─ README.md            本文件：总览、学习路线、TODO 清单
 ├─ docs/                环境说明、规范约定、命令速查、踩坑记录、课程模板
 ├─ setup/               一键安装脚本（Windows + WSL2）

@@ -22,18 +22,18 @@
 
 ## 2. 一键安装
 
-1. 在新电脑上从 GitHub 下载本仓库（页面上 **Code → Download ZIP**，或在 Windows 上 `git clone`），解压到一个不含空格和中文的路径，例如 `D:\ros2_playground`
+1. 在新电脑上从 GitHub 下载本仓库（页面上 **Code → Download ZIP**，或在 Windows 上 `git clone`），解压到一个不含空格和中文的路径，例如 `D:\ros2-playground`
 2. 打开 PowerShell（普通权限即可，不需要管理员），进入 `setup` 目录运行：
 
 ```powershell
-cd D:\ros2_playground\setup
+cd D:\ros2-playground\setup
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 安装完成后，在 WSL 里把仓库克隆到工作空间（Windows 上下载的那份只用于安装，可以删掉）：
 
 ```bash
-cd ~/ros2_ws/src && git clone https://github.com/mymuse77/ros2_playground.git
+cd ~/ros2_ws/src && git clone https://github.com/mymuse77/ros2-playground.git
 ```
 
 默认会：安装到空闲空间最大的盘的 `X:\WSL\Ubuntu-24.04`，用户名 `ros`，自动选镜像。

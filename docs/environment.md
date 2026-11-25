@@ -39,7 +39,7 @@ glxinfo -B | grep "OpenGL renderer"
 
 | 位置 | 用途 |
 |---|---|
-| `~/ros2_ws/src/ros2_playground` | 本仓库 |
+| `~/ros2_ws/src/ros2-playground` | 本仓库 |
 | `~/ros2_ws/build`、`install`、`log` | 编译产物（不提交） |
 | `~/bags` | ros2 bag 录包数据（不提交） |
 | `~/maps` | 临时保存的地图；确定使用的地图复制到 `common/pg_sim/maps` 后提交 |

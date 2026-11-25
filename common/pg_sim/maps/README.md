@@ -23,7 +23,7 @@
 ```bash
 ros2 launch pg_slam_py slam_sim.launch.py explore:=auto      # 或者用键盘遥控
 # 地图完整后（save_map --stats-only 看空闲面积不再增长），先停车再保存：
-ros2 run pg_slam_py save_map ~/ros2_ws/src/ros2_playground/common/pg_sim/maps/tb3_world
+ros2 run pg_slam_py save_map ~/ros2_ws/src/ros2-playground/common/pg_sim/maps/tb3_world
 ```
 
 ## 在 launch 文件里引用
