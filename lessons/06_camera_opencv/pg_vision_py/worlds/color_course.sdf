@@ -1,0 +1,152 @@
+<?xml version="1.0"?>
+<!--
+  06 课颜色跟随练习场景（俯视图，单位 m，小车出生在原点、车头朝 +x）：
+
+        y
+        ▲
+      2 ┤  ◆ 橙色方块(-2, 2)      ▮ 绿色圆柱 (1.5, 1.8)
+        │
+      0 ┤  ●────────────────> ● 红色小球 (2.0, 0)   ← 要跟随的目标
+        │ 出生点
+     -2 ┤                          ■ 蓝色方块 (1.5, -1.8)
+        └──────────────────────────────────▶ x
+           -2        0        2
+
+  - 红色小球直径 0.3 m：已知真实尺寸，才能由画面中的像素宽度估算距离（针孔模型）
+  - 其余三个物体是干扰项，用来验证颜色分割没有认错目标；
+    橙色方块的色相与红色相邻，是最难分的一个（见 README 的练习）
+  - 小球不是固定的：可以在 Gazebo 里拖动它，或用 `gz service` 命令把它瞬移到指定位置，
+    小车会跟着走
+  - 四周有 8 m × 8 m 的围墙，围墙和地面用灰色，避免被误判成目标
+  - 地面和光源直接写在文件里，不依赖在线模型库
+-->
+<sdf version="1.6">
+  <world name="color_course">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <physics type="ode">
+      <real_time_update_rate>1000.0</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+    </physics>
+
+    <!-- 不投影：阴影会让同一个物体出现明暗两种颜色，增加颜色分割的难度 -->
+    <scene>
+      <shadows>false</shadows>
+      <ambient>0.6 0.6 0.6 1</ambient>
+      <background>0.7 0.7 0.7 1</background>
+    </scene>
+
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>0.5 0 11 0 1.5707 0</pose>
+      </camera>
+    </gui>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material><ambient>0.8 0.8 0.8 1</ambient><diffuse>0.8 0.8 0.8 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 目标：红色小球，直径 0.3 m（半径 0.15 m），质量 0.2 kg -->
+    <model name="red_ball">
+      <pose>2.0 0 0.15 0 0 0</pose>
+      <link name="link">
+        <inertial>
+          <mass>0.2</mass>
+          <!-- 实心球的转动惯量 2/5·m·r² = 0.0018 -->
+          <inertia>
+            <ixx>0.0018</ixx><iyy>0.0018</iyy><izz>0.0018</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.15</radius></sphere></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.15</radius></sphere></geometry>
+          <material>
+            <ambient>0.9 0.05 0.05 1</ambient>
+            <diffuse>0.9 0.05 0.05 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 干扰项 1：绿色圆柱 -->
+    <model name="green_cylinder">
+      <static>true</static>
+      <pose>1.5 1.8 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><cylinder><radius>0.2</radius><length>0.5</length></cylinder></geometry></collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.2</radius><length>0.5</length></cylinder></geometry>
+          <material><ambient>0.05 0.7 0.1 1</ambient><diffuse>0.05 0.7 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 干扰项 2：蓝色方块 -->
+    <model name="blue_box">
+      <static>true</static>
+      <pose>1.5 -1.8 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.4 0.4 0.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.4 0.4 0.5</size></box></geometry>
+          <material><ambient>0.05 0.1 0.9 1</ambient><diffuse>0.05 0.1 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 干扰项 3：橙色方块，色相与红色相邻，最容易被认错 -->
+    <model name="orange_box">
+      <static>true</static>
+      <pose>-2.0 2.0 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.4 0.4 0.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.4 0.4 0.5</size></box></geometry>
+          <material><ambient>0.95 0.5 0.05 1</ambient><diffuse>0.95 0.5 0.05 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 四周围墙：8 m × 8 m，灰色 -->
+    <model name="boundary">
+      <static>true</static>
+      <link name="link">
+        <collision name="north"><pose>0 4 0.25 0 0 0</pose><geometry><box><size>8.2 0.1 0.5</size></box></geometry></collision>
+        <visual name="north_v"><pose>0 4 0.25 0 0 0</pose><geometry><box><size>8.2 0.1 0.5</size></box></geometry><material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
+        <collision name="south"><pose>0 -4 0.25 0 0 0</pose><geometry><box><size>8.2 0.1 0.5</size></box></geometry></collision>
+        <visual name="south_v"><pose>0 -4 0.25 0 0 0</pose><geometry><box><size>8.2 0.1 0.5</size></box></geometry><material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
+        <collision name="east"><pose>4 0 0.25 0 0 0</pose><geometry><box><size>0.1 8.2 0.5</size></box></geometry></collision>
+        <visual name="east_v"><pose>4 0 0.25 0 0 0</pose><geometry><box><size>0.1 8.2 0.5</size></box></geometry><material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
+        <collision name="west"><pose>-4 0 0.25 0 0 0</pose><geometry><box><size>0.1 8.2 0.5</size></box></geometry></collision>
+        <visual name="west_v"><pose>-4 0 0.25 0 0 0</pose><geometry><box><size>0.1 8.2 0.5</size></box></geometry><material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
+      </link>
+    </model>
+  </world>
+</sdf>

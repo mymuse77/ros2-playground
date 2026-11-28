@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>pg_vision_py</name>
+  <version>0.1.0</version>
+  <description>06 课：相机图像处理与颜色跟随（HSV 阈值分割 + 比例控制）</description>
+  <maintainer email="mymuse@foxmail.com">Richie</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- 运行依赖 -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <!-- 图像处理：OpenCV 的 Python 接口、numpy，以及 ROS 图像消息与 OpenCV 图像互转的 cv_bridge -->
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <!-- launch 文件依赖：仿真由公共包 pg_sim 提供 -->
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>pg_sim</exec_depend>
+
+  <!-- 测试依赖：代码风格检查、文档字符串检查、单元测试框架 -->
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
