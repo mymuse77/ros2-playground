@@ -150,6 +150,24 @@ def resize_to_width(image, width):
     return cv2.resize(image, (width, new_height), interpolation=cv2.INTER_AREA)
 
 
+def convert_to_bgr(image, encoding):
+    """
+    把 ROS 图像（sensor_msgs/Image 转成的数组）统一成 OpenCV 习惯的 BGR 通道顺序。
+
+    ROS 的 rgb8 是红绿蓝顺序，OpenCV 默认是蓝绿红，不转换的话红色会被当成蓝色，
+    所有颜色阈值都会错。
+
+    :param image: uint8 数组，形状 (高, 宽, 3)
+    :param encoding: ROS 图像编码，支持 'rgb8' 和 'bgr8'
+    :raises ValueError: 不支持的编码
+    """
+    if encoding == 'bgr8':
+        return image
+    if encoding == 'rgb8':
+        return cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    raise ValueError(f'不支持的图像编码 "{encoding}"，只支持 rgb8 和 bgr8')
+
+
 def segment(image_bgr, color, blur_ksize=5, morph_ksize=5):
     """
     阈值分割：返回图像中指定颜色区域的掩码。

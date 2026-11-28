@@ -27,6 +27,10 @@ setup(
     description='06 课：相机图像处理与颜色跟随',
     license='Apache-2.0',
     extras_require={'test': ['pytest']},
-    # 节点入口：`ros2 run pg_vision_py <名字>` 中的名字 = 模块:函数（随节点一起添加）
-    entry_points={'console_scripts': []},
+    # 节点入口：`ros2 run pg_vision_py <名字>` 中的名字 = 模块:函数
+    entry_points={
+        'console_scripts': [
+            'color_follower = pg_vision_py.color_follower_node:main',
+        ],
+    },
 )

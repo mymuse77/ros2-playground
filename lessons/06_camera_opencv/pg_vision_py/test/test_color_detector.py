@@ -2,8 +2,9 @@
 
 import cv2
 import numpy as np
-from pg_vision_py.color_detector import (COLOR_PRESETS, detect, Detection, draw_detection,
-                                         find_target, HsvRange, resize_to_width, segment)
+from pg_vision_py.color_detector import (COLOR_PRESETS, convert_to_bgr, detect, Detection,
+                                         draw_detection, find_target, HsvRange,
+                                         resize_to_width, segment)
 import pytest
 
 WIDTH, HEIGHT = 320, 180
@@ -210,6 +211,33 @@ class TestResizeToWidth:
         """图像已经不比目标宽：原样返回（不放大）。"""
         image = blank_image()
         assert resize_to_width(image, 640) is image
+
+
+class TestConvertToBgr:
+    """ROS 图像编码到 BGR 的转换。"""
+
+    def test_rgb8_swaps_channels(self):
+        """rgb8（红绿蓝顺序）：红色像素 (255, 0, 0) 转成 BGR 后是 (0, 0, 255)。"""
+        rgb = np.zeros((2, 2, 3), dtype=np.uint8)
+        rgb[..., 0] = 255
+        assert convert_to_bgr(rgb, 'rgb8')[0, 0].tolist() == [0, 0, 255]
+
+    def test_bgr8_is_returned_unchanged(self):
+        """bgr8：已经是 OpenCV 的顺序，原样返回。"""
+        image = blank_image()
+        assert convert_to_bgr(image, 'bgr8') is image
+
+    def test_rgb8_red_is_detected_as_red(self):
+        """端到端：rgb8 编码的红色圆，转换后能被红色范围找到；不转换则找不到。"""
+        bgr = with_circle(blank_image(), (160, 90), 20, hue=0)
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        assert detect(convert_to_bgr(rgb, 'rgb8'), RED) is not None
+        assert detect(rgb, RED) is None
+
+    def test_rejects_unsupported_encoding(self):
+        """不支持的编码（如 mono8）：抛 ValueError，而不是悄悄返回错误的颜色。"""
+        with pytest.raises(ValueError):
+            convert_to_bgr(blank_image(), 'mono8')
 
 
 class TestDrawDetection:
